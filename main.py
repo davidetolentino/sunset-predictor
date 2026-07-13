@@ -1,11 +1,11 @@
 import sqlite3
 from fastapi import FastAPI
 from weather import get_sunset_time, get_weather_at_sunset
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from datetime import date, datetime
 
 class RatingInput(BaseModel):
-    rating: int
+    rating: int = Field(ge=1, le=10)
 
 
 app = FastAPI()
@@ -39,6 +39,36 @@ def rate(data: RatingInput):
     conn = sqlite3.connect("sunset.db")
     cursor = conn.cursor()
     
+    # NEW BLOCK 1: create table if it doesn't exist yet
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS sunset_ratings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            date TEXT NOT NULL,
+            sunset_time TEXT,
+            rating INTEGER NOT NULL,
+            rating_source TEXT NOT NULL,
+            cloud_cover REAL,
+            cloud_cover_low REAL,
+            cloud_cover_mid REAL,
+            cloud_cover_high REAL,
+            humidity REAL,
+            visibility REAL,
+            temperature REAL,
+            wind_speed REAL,
+            created_at TEXT NOT NULL
+        )
+    """)
+    
+    # NEW BLOCK 2: refuse duplicate rating for today
+    cursor.execute(
+        "SELECT id FROM sunset_ratings WHERE date = ?",
+        (date.today().isoformat(),)
+    )
+    if cursor.fetchone():
+        conn.close()
+        return {"message": "Already rated today", "saved": False}
+    
+    # existing INSERT stays exactly as-is below
     cursor.execute("""
         INSERT INTO sunset_ratings 
             (date, sunset_time, rating, rating_source,
