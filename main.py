@@ -80,7 +80,7 @@ def rate(data: RatingInput):
         date.today().isoformat(),
         sunset_time.isoformat(),
         data.rating,
-        "api",
+        "in_person",
         weather["cloud_cover"],
         weather["cloud_cover_low"],
         weather["cloud_cover_mid"],
